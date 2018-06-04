@@ -25,7 +25,7 @@ namespace Mit.Dci.DlcOracle
         }
 
         public static byte[] PublicKeyFromPrivateKey(byte[] privateKey) {
-            BigInteger d = new BigInteger(privateKey);
+            BigInteger d = BigIntegerFromBytes(privateKey);
 
             ECPoint q = domain.G.Multiply(d).Normalize();
             return q.GetEncoded(true);
@@ -45,10 +45,6 @@ namespace Mit.Dci.DlcOracle
             while(rX[0] == (byte)0) {
                 rX = rX.Skip(1).ToArray();
             }
-
-             Console.WriteLine("rX: {0} {1}", R.XCoord.ToBigInteger().SignValue, BitConverter.ToString(rX).Replace("-",""));
-
-
             Sha256Digest myHash = new Sha256Digest();
             myHash.BlockUpdate (message, 0, message.Length);
             myHash.BlockUpdate (rX, 0, rX.Length);
@@ -56,18 +52,11 @@ namespace Mit.Dci.DlcOracle
             myHash.DoFinal (e, 0);
 
             BigInteger bigE = BigIntegerFromBytes(e);
-            Console.WriteLine("bigE: {0} {1}", bigE.SignValue, BigIntegerToString(bigE));
-
-            A = A.Multiply(bigE);
-            Console.WriteLine("A.Y (1): {0} {1}", A.YCoord.ToBigInteger().SignValue, BigIntegerToString(A.YCoord.ToBigInteger()));
-
+            A = A.Multiply(bigE).Normalize();
             var y = A.YCoord.ToBigInteger().Negate();
-            Console.WriteLine("A.Y (2): {0} {1}", y.SignValue, BigIntegerToString(y));
             y = y.Mod(p);
-            
-            Console.WriteLine("A.Y (3): {0} {1}", y.SignValue, BigIntegerToString(y));
-            A = curve.Curve.CreatePoint(A.XCoord.ToBigInteger(),y);
-            A = A.Add(R);
+            A = curve.Curve.CreatePoint(A.XCoord.ToBigInteger(),y).Normalize();
+            A = A.Add(R).Normalize();
             return A.GetEncoded(true);
         }
 
@@ -75,16 +64,12 @@ namespace Mit.Dci.DlcOracle
             
             BigInteger bigPriv = BigIntegerFromBytes(privKey);
             BigInteger bigK = BigIntegerFromBytes(oneTimeSigningKey);
-            Console.WriteLine("bigPriv: {0} {1}", bigPriv.SignValue, BigIntegerToString(bigPriv));
-            Console.WriteLine("bigK: {0} {1}", bigK.SignValue, BigIntegerToString(bigK));
 
             ECPoint r = domain.G.Multiply(bigK).Normalize();
             byte[] rX = r.XCoord.ToBigInteger().ToByteArray();
             while(rX[0] == (byte)0) {
                 rX = rX.Skip(1).ToArray();
             }
-            
-            Console.WriteLine("rX: {0} {1}", r.XCoord.ToBigInteger().SignValue, BitConverter.ToString(rX).Replace("-",""));
 
             Sha256Digest myHash = new Sha256Digest();
             myHash.BlockUpdate (message, 0, message.Length);
@@ -93,21 +78,22 @@ namespace Mit.Dci.DlcOracle
             myHash.DoFinal (e, 0);
 
             BigInteger bigE = BigIntegerFromBytes(e);
-            Console.WriteLine("bigE: {0} {1}", bigE.SignValue, BigIntegerToString(bigE));
 
             BigInteger bigS = bigE.Multiply(bigPriv);
-            Console.WriteLine("bigS(1): {0} {1}", bigS.SignValue, BigIntegerToString(bigS));
 
-            Console.WriteLine("bigK: {0} {1}", bigK.SignValue, BigIntegerToString(bigK));
             var bigS2 = bigK.Subtract(bigS);
-            Console.WriteLine("bigS(2): {0} {1}", bigS2.SignValue, BigIntegerToString(bigS2));
             var bigS3 = bigS2.Mod(curve.N);
-            Console.WriteLine("bigS(3): {0} {1}", bigS3.SignValue, BigIntegerToString(bigS3));
-            return StringToByteArray(BigIntegerToString(bigS3));
+            byte[] sigBytes = StringToByteArray(BigIntegerToString(bigS3));
+            byte[] signature = new byte[32];
+            Array.Copy(sigBytes,0,signature,32-sigBytes.Length,sigBytes.Length);
+            return signature;
+
         }
 
         private static string BigIntegerToString(BigInteger big) {
-            return big.ToString(16);
+            var returnString = big.ToString(16);
+            if(returnString.Length % 2 != 0) { returnString = "0" + returnString; }
+            return returnString;
         }
 
         private static BigInteger BigIntegerFromBytes(byte[] bytes) {
@@ -118,6 +104,7 @@ namespace Mit.Dci.DlcOracle
         }
 
         private static byte[] StringToByteArray(string hex) {
+            
                 return Enumerable.Range(0, hex.Length)
                      .Where(x => x % 2 == 0)
                      .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
