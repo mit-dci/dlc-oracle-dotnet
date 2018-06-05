@@ -12,6 +12,9 @@ using System.Linq;
 
 namespace Mit.Dci.DlcOracle
 {
+    /// <summary>
+    /// This is a static class containing various methods used when creating an Oracle
+    /// </summary>
     public static class Oracle
     {
         private static SecureRandom secureRandom = new SecureRandom ();
@@ -19,11 +22,21 @@ namespace Mit.Dci.DlcOracle
         private static ECDomainParameters domain = new ECDomainParameters (curve.Curve, curve.G, curve.N, curve.H);
 
         private static BigInteger p = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16);
-        
+
+        /// <summary>
+        /// Generates a proper byte array for a given numeric value
+        /// This because numeric values are expected to be wrapped in a 32 byte
+        /// message by LIT
+        /// </summary>       
+        /// <param name="value">Number to encode</param>
         public static byte[] GenerateNumericMessage(long value) {
             return StringToByteArray(value.ToString("x64"));
         }
 
+        /// <summary>
+        /// Derives the public key to a private key
+        /// </summary>       
+        /// <param name="privateKey">The private key to derive the public key for</param>
         public static byte[] PublicKeyFromPrivateKey(byte[] privateKey) {
             BigInteger d = BigIntegerFromBytes(privateKey);
 
@@ -31,11 +44,25 @@ namespace Mit.Dci.DlcOracle
             return q.GetEncoded(true);
         }
 
+        /// <summary>
+        /// Will return a new random private scalar to be used when signing a new message
+        /// </summary>       
         public static byte[] GenerateOneTimeSigningKey() {
             return secureRandom.GenerateSeed(32);
         }
 
 
+        /// <summary>
+        /// calculates the signature multipled by the generator
+        /// point, for an arbitrary message based on pubkey R and pubkey A.
+        /// Calculates P = pubR - h(msg, pubR)pubA.
+        /// This is used when building settlement transactions and determining the pubkey
+        /// to the oracle's possible signatures beforehand. Can be calculated with just
+        /// public keys, so by anyone.
+        /// </summary>       
+        /// <param name="oraclePubA">The oracle's public key</param>
+        /// <param name="oraclePubR">The oracle's R-point (public key to the one-time signing key)</param>
+        /// <param name="message">The message to compute the signature pubkey for</param>
         public static byte[] ComputeSignaturePubKey(byte[] oraclePubA, byte[] oraclePubR, byte[] message)
         {
             ECPoint A = curve.Curve.DecodePoint(oraclePubA).Normalize();
@@ -60,6 +87,13 @@ namespace Mit.Dci.DlcOracle
             return A.GetEncoded(true);
         }
 
+        /// <summary>
+        /// Computes the signature for an arbitrary message based on two private scalars:
+        /// The one-time signing key and the oracle's private key
+        /// </summary>       
+        /// <param name="privateKey">The private key to sign with</param>
+        /// <param name="oneTimeSigningKey">The one-time signing key to sign with</param>
+        /// <param name="message">The message to sign</param>
         public static byte[] ComputeSignature(byte[] privKey, byte[] oneTimeSigningKey, byte[] message) {
             
             BigInteger bigPriv = BigIntegerFromBytes(privKey);
