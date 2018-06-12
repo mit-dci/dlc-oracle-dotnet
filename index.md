@@ -6,4 +6,4 @@ For a step-by-step instruction on how to build an oracle using this library, ple
 
 See [the examples repository](https://github.com/mit-dci/dlc-oracle-dotnet-samples) for examples using this library. Feel free to contribute any examples you created by submitting a pull request to the samples repository.
 
-To see how to use this library, check out the [documentation](https://docs.mitdci.org/dlc-oracle-dotnet/api/Mit.Dci.DlcOracle.Oracle.html)
+To see how to use this library, check out the [documentation](obj/api/Mit.Dci.DlcOracle.Oracle.yml)

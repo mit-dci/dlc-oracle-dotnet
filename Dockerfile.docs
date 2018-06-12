@@ -1,0 +1,6 @@
+FROM tsgkadot/docker-docfx
+
+COPY . /src
+WORKDIR /src
+
+CMD ["docfx","docfx.json"]
